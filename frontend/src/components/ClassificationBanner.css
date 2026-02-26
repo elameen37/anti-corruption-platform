@@ -1,0 +1,21 @@
+.classification-banner {
+    height: var(--banner-height);
+    background-color: var(--classification-bg);
+    color: var(--classification-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    user-select: none;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    font-size: 0.875rem;
+}
+
+.classification-text {
+    text-transform: uppercase;
+}
