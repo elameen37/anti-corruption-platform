@@ -3,27 +3,56 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import './Login.css';
 
+const API_BASE = 'http://localhost:3001/api/v1';
+
 export default function LoginPage() {
     const router = useRouter();
     const [step, setStep] = useState<1 | 2>(1);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [agencyId, setAgencyId] = useState('');
+    const [passphrase, setPassphrase] = useState('');
 
     const handleIdentitySubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setError(null);
         setLoading(true);
-        // Simulate network checking environment & identity
+        // Simulate environment verification before MFA step
         setTimeout(() => {
             setLoading(false);
             setStep(2);
         }, 1200);
     };
 
-    const handleHardwareKeySimulation = () => {
+    const handleHardwareKeySimulation = async () => {
         setLoading(true);
-        // Simulate hardware key challenge-response
-        setTimeout(() => {
+        setError(null);
+
+        try {
+            const res = await fetch(`${API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agencyId, passphrase }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.message || 'Authentication failed.');
+            }
+
+            // Store auth data
+            localStorage.setItem('sice_token', data.access_token);
+            localStorage.setItem('sice_user', JSON.stringify(data.user));
+
+            // Redirect to dashboard
             router.push('/dashboard');
-        }, 1500);
+        } catch (err: unknown) {
+            setLoading(false);
+            const message = err instanceof Error ? err.message : 'Authentication failed. Please verify your credentials.';
+            setError(message);
+            setStep(1);
+        }
     };
 
     return (
@@ -31,7 +60,6 @@ export default function LoginPage() {
             <div className="login-box">
                 <div className="login-header">
                     <div className="seal">
-                        {/* Visual representation of an institutional seal */}
                         <svg viewBox="0 0 100 100" fill="none" stroke="var(--gold)" strokeWidth="4">
                             <circle cx="50" cy="50" r="45" />
                             <path d="M50 20 L80 80 L20 80 Z" />
@@ -44,15 +72,34 @@ export default function LoginPage() {
                     </div>
                 </div>
 
+                {error && (
+                    <div className="error-banner">
+                        <span className="error-icon">⚠</span>
+                        <span>{error}</span>
+                    </div>
+                )}
+
                 {step === 1 ? (
                     <form className="login-form" onSubmit={handleIdentitySubmit}>
                         <div className="form-group">
-                            <label>Agency ID / Nomencalture</label>
-                            <input type="text" placeholder="e.g. ICPC-INT-8902" required autoFocus />
+                            <label>Agency ID / Nomenclature</label>
+                            <input
+                                type="text"
+                                placeholder="e.g. ICPC-INT-8902"
+                                required
+                                autoFocus
+                                value={agencyId}
+                                onChange={(e) => setAgencyId(e.target.value)}
+                            />
                         </div>
                         <div className="form-group">
                             <label>Cryptographic Passphrase</label>
-                            <input type="password" required />
+                            <input
+                                type="password"
+                                required
+                                value={passphrase}
+                                onChange={(e) => setPassphrase(e.target.value)}
+                            />
                         </div>
                         <button type="submit" disabled={loading} className="btn-primary">
                             {loading ? 'Verifying Identity...' : 'Initialize Secure Session'}

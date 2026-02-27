@@ -1,18 +1,34 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+    Controller,
+    Post,
+    Body,
+    Get,
+    UseGuards,
+    Request,
+    HttpCode,
+    HttpStatus,
+} from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
+
+class LoginDto {
+    agencyId: string;
+    passphrase: string;
+}
 
 @Controller('auth')
 export class AuthController {
-    @Post('exchange')
+    constructor(private readonly authService: AuthService) { }
+
+    @Post('login')
     @HttpCode(HttpStatus.OK)
-    exchangeToken(@Body() body: any) {
-        // Mocking the exchange of a FIDO2 hardware payload for a short-lived token
-        return {
-            status: 'success',
-            message: 'Zero-Trust Authentication successful. Device fingerprinted.',
-            access_token: 'mock.jwt.token.eyJhbGciOiJBMjU2R0NNS1ciLCJlbmMiOiJBMjU2R0NNIn0...',
-            expires_in: 300, // 5 minutes max lifetime
-            clearance_level: 'SECRET',
-            agency: 'ICPC'
-        };
+    async login(@Body() loginDto: LoginDto) {
+        return this.authService.login(loginDto.agencyId, loginDto.passphrase);
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('profile')
+    async getProfile(@Request() req: any) {
+        return this.authService.getProfile(req.user.userId);
     }
 }
